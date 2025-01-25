@@ -21,4 +21,7 @@ router.get('/protected', verifyAccessToken, (req, res) => {
     });
 });
 
+
+// router.post("/addproducts", authenticate, upload.single("image"), addProduct);
+
 export default router;
