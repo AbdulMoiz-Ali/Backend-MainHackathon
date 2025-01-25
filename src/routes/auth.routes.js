@@ -3,11 +3,12 @@ import { register, login, logout } from '../controllers/auth.controllers.js';
 import { validateUserInput, validateLoginInput } from '../middleware/validateUserMiddleware.js';
 import { hashPassword } from '../middleware/hashPasswordMiddleware.js';
 import verifyAccessToken from '../middleware/verifyAccessToken.js';
+import { upload } from "../middleware/multer.middleware.js";
 
 const router = express.Router();
 
 // Register Route
-router.post('/register', validateUserInput, hashPassword, register);
+router.post('/register', validateUserInput, upload.single('image'), hashPassword, register);
 
 // Login Route
 router.post('/login', validateLoginInput, login);

@@ -10,10 +10,14 @@ const UserSchema = new Schema(
             type: String,
             required: false,
         },
+        image: {
+            type: String,
+            required: true,
+        },
         email: {
             type: String,
             required: [true, "Email is required"],
-            unique: true, 
+            unique: true,
         },
         password: {
             type: String,

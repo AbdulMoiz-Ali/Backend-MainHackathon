@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
+import cloudinary from "./../middleware/cloudinary.js"
 
 dotenv.config();
 
@@ -17,6 +18,26 @@ const transporter = nodemailer.createTransport({
         pass: process.env.EMAIL_PASSWORD,
     },
 });
+
+
+const uploadImageToCloudinary = async (localPath) => {
+    try {
+        // Upload the image to Cloudinary
+        const uploadResult = await cloudinary.uploader.upload(localPath, {
+            resource_type: "image", // Ensure we upload only images
+        });
+
+        // Uncomment to delete the local file after upload
+        // fs.unlinkSync(localPath);
+
+        return uploadResult.url;  // Return the URL of the uploaded image
+    } catch (error) {
+        console.error("Cloudinary Upload Error:", error);
+        // Uncomment to delete the local file on error
+        // fs.unlinkSync(localPath);
+        return null;
+    }
+};
 
 
 // Generate Access Token
@@ -34,12 +55,20 @@ const register = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
+        if (!req.file) {
+            return res.status(400).json({ error: "image not found" });
+        }
+        const imageUrl = await uploadImageToCloudinary(req.file.path);
+
+        if (!imageUrl) {
+            return res.status(500).json({ message: 'Error uploading image to Cloudinary' });
+        }
         // Check if the user already exists
         const userExists = await auth.findOne({ email });
         if (userExists) return res.status(400).json({ message: "Email already exists" });
 
         // Create new user (password will be hashed by the middleware)
-        const newUser = new auth({ name, email, password });
+        const newUser = new auth({ name, email, password, image: imageUrl });
         await newUser.save();
 
         const info = await transporter.sendMail({
@@ -130,6 +159,7 @@ const login = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
 
 
 // Logout Route - Clear Refresh Token Cookie
