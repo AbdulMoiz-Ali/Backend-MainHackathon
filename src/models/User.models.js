@@ -10,9 +10,9 @@ const UserSchema = new Schema(
             type: String,
             required: false,
         },
-        image: {
+        cnic: {
             type: String,
-            required: true,
+            required: false,
         },
         email: {
             type: String,
@@ -23,6 +23,11 @@ const UserSchema = new Schema(
             type: String,
             required: [true, "Password is required"],
         },
+        role: {
+            type: String,
+            enum: ["User", "Admin"],
+            default: "User"
+        }
     },
     {
         timestamps: true,

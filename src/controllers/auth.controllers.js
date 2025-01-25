@@ -1,13 +1,12 @@
-import auth from './../models/auth.models.js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-import nodemailer from 'nodemailer';
-import cloudinary from "./../middleware/cloudinary.js"
+import User from "../models/User.models.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import nodemailer from "nodemailer";
 
 dotenv.config();
 
-// nodemailer config
+// Nodemailer configuration
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     service: "gmail",
@@ -19,99 +18,69 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-
-const uploadImageToCloudinary = async (localPath) => {
-    try {
-        // Upload the image to Cloudinary
-        const uploadResult = await cloudinary.uploader.upload(localPath, {
-            resource_type: "image", // Ensure we upload only images
-        });
-
-        // Uncomment to delete the local file after upload
-        // fs.unlinkSync(localPath);
-
-        return uploadResult.url;  // Return the URL of the uploaded image
-    } catch (error) {
-        console.error("Cloudinary Upload Error:", error);
-        // Uncomment to delete the local file on error
-        // fs.unlinkSync(localPath);
-        return null;
+// Password generation function
+const generatePassword = (name) => {
+    if (!name) {
+        throw new Error("Name is required to generate a password");
     }
+    const initials = name.toLowerCase().slice(0, 3);
+    const randomNumbers = Math.floor(1000 + Math.random() * 9000);
+    return `${initials}${randomNumbers}`;
 };
 
-
-// Generate Access Token
+// Access token generation
 const generateAccessToken = (userId) => {
-    return jwt.sign({ id: userId }, process.env.SECRET_KEY, { expiresIn: '15m' });  // expires in 15 minutes
+    return jwt.sign({ id: userId }, process.env.SECRET_KEY, { expiresIn: "1d" });
 };
 
-// Generate Refresh Token
-const generateRefreshToken = (userId) => {
-    return jwt.sign({ id: userId }, process.env.REFRESH_SECRET_KEY, { expiresIn: '7d' });  // expires in 7 days
-};
-
-// Register User
+// Register user
 const register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, cnic, role } = req.body;
 
-        if (!req.file) {
-            return res.status(400).json({ error: "image not found" });
+        if (!name || !email || !cnic) {
+            return res.status(400).json({ message: "Name, Email, and CNIC are required" });
         }
-        const imageUrl = await uploadImageToCloudinary(req.file.path);
 
-        if (!imageUrl) {
-            return res.status(500).json({ message: 'Error uploading image to Cloudinary' });
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: "Email already exists" });
         }
-        // Check if the user already exists
-        const userExists = await auth.findOne({ email });
-        if (userExists) return res.status(400).json({ message: "Email already exists" });
 
-        // Create new user (password will be hashed by the middleware)
-        const newUser = new auth({ name, email, password, image: imageUrl });
+        const password = generatePassword(name);
+        const newUser = new User({ name, email, cnic, password, role });
         await newUser.save();
 
-        const info = await transporter.sendMail({
-            from: `"Abdul MOiz ALi" <${process.env.EMAIL_USER}>`,
-            to: `${email}`, // User's email
-            subject: "🎉 Welcome to Our Platform! 🎉", // Subject of the email
+        // Send welcome email with the password
+        await transporter.sendMail({
+            from: `"Abdul Moiz Ali" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "🎉 Your Account Password & Welcome to Our Platform! 🎉",
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-                    <div style="text-align: center;">👋</div>
-                    <h1 style="color: #333; text-align: center; font-size: 24px; margin-bottom: 20px;">Welcome to Our Community!</h1>
+                    <div style="text-align: center; font-size: 48px;">👋</div>
+                    <h1 style="color: #333; text-align: center; font-size: 28px; margin-bottom: 20px;">Welcome to Our Community!</h1>
                     <p style="color: #555; text-align: center; font-size: 16px; line-height: 1.6;">
                         Hi <strong>${name}</strong>,
                     </p>
                     <p style="color: #555; text-align: center; font-size: 16px; line-height: 1.6;">
-                        We’re thrilled to have you here! Get ready to explore, learn, and engage with our platform. We're dedicated to helping you achieve your goals and making your experience seamless and enjoyable.
+                        We’re excited to have you onboard! Below, you’ll find your <strong>account password</strong> to log in and get started:
                     </p>
-                    <div style="text-align: center; margin: 20px 0;">
-                        <a 
-                            href="#" 
-                            style="background-color: #007bff; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block;">
-                            Explore Now
-                        </a>
+                    <div style="text-align: center; margin: 30px 0; padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 5px;">
+                        <h2 style="color: #333; font-size: 24px; margin-bottom: 10px;">Your Password</h2>
+                        <p style="font-size: 20px; color: #007bff; font-weight: bold; margin: 0;">${password}</p>
+                        <p style="font-size: 14px; color: #999; margin: 10px 0;">(Please keep this password secure and do not share it with anyone.)</p>
                     </div>
                     <p style="color: #555; text-align: center; font-size: 16px; line-height: 1.6;">
-                        If you have any questions, need support, or want to learn more about what we offer, feel free to reach out to our team.
-                    </p>
-                    <p style="color: #555; text-align: center; font-size: 16px; line-height: 1.6;">
-                        Cheers!<br/>
-                        <strong>The Team</strong>
+                        Once you log in, we recommend changing your password to something you’ll remember. If you face any issues, feel free to reach out to our support team.
                     </p>
                     <footer style="text-align: center; font-size: 12px; color: #999; margin-top: 20px;">
-                        © ${new Date().getFullYear()} Our Platform. All rights reserved.
+                        © ${new Date().getFullYear()} Your Platform. All rights reserved.
                     </footer>
                 </div>
             `,
-
         });
 
-
-
-        console.log("Message sent: %s", info.messageId);
-
-        // Respond with success
         res.status(201).json({ message: "User created successfully", data: { name, email } });
     } catch (error) {
         console.error("Error in register:", error);
@@ -119,12 +88,12 @@ const register = async (req, res) => {
     }
 };
 
-// Login User
+// Login user
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const user = await auth.findOne({ email });
+        const user = await User.findOne({ email });
         if (!user) {
             return res.status(400).json({ message: "Email or password is incorrect" });
         }
@@ -134,25 +103,15 @@ const login = async (req, res) => {
             return res.status(400).json({ message: "Email or password is incorrect" });
         }
 
-        // Generate tokens
         const accessToken = generateAccessToken(user._id);
-        const refreshToken = generateRefreshToken(user._id);
 
-        // Store refreshToken in cookies
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,       // Secure HTTP cookie
-            sameSite: "strict",   // CSRF protection
-            maxAge: 7 * 24 * 60 * 60 * 1000,  // Cookie expires in 7 days
-        });
-
-        // Send accessToken to client
         res.status(200).json({
             message: "Login successful",
             accessToken,
             user: {
                 name: user.name,
                 email: user.email,
-            }
+            },
         });
     } catch (error) {
         console.error("Error in login:", error);
@@ -160,12 +119,10 @@ const login = async (req, res) => {
     }
 };
 
-
-
-// Logout Route - Clear Refresh Token Cookie
+// Logout user
 const logout = (req, res) => {
-    res.clearCookie("refreshToken");  // Clear the refreshToken cookie
+    res.clearCookie("refreshToken");
     res.status(200).json({ message: "Logged out successfully" });
 };
 
-export { register, login, generateAccessToken, generateRefreshToken, logout };
+export { register, login, logout };
