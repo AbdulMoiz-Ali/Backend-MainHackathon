@@ -9,7 +9,12 @@ import cors from "cors"
 
 
 const app = express();
-app.use(cors());
+// https://frontend-main-hackathon.vercel.app/
+app.use(cors({
+    origin: "*",
+    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+    credentials: true, // Include credentials like cookies
+}));
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -18,8 +23,8 @@ app.get("/", (req, res) => {
 
 // routes
 app.use("/auth", authRoutes);
-app.use("/category",categoryRoutes)
-app.use("/subcategory",subcategoryRoutes)
+app.use("/category", categoryRoutes)
+app.use("/subcategory", subcategoryRoutes)
 
 connectDB()
     .then(() => {
