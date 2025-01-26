@@ -36,19 +36,19 @@ const generateAccessToken = (userId) => {
 // Register user
 const register = async (req, res) => {
     try {
-        const { name, email, cnic, role } = req.body;
+        const { name, email, cnic } = req.body;
 
         if (!name || !email || !cnic) {
             return res.status(400).json({ message: "Name, Email, and CNIC are required" });
         }
-
+        console.log(name, email, cnic)
         const userExists = await User.findOne({ email });
         if (userExists) {
             return res.status(400).json({ message: "Email already exists" });
         }
 
         const password = generatePassword(name);
-        const newUser = new User({ name, email, cnic, password, role });
+        const newUser = new User({ name, email, cnic, password });
         await newUser.save();
 
         // Send welcome email with the password

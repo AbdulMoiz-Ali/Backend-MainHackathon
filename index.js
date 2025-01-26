@@ -10,11 +10,16 @@ import cors from "cors"
 
 const app = express();
 // https://frontend-main-hackathon.vercel.app/
-app.use(cors({
-    origin: "*",
-    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
-    credentials: true, // Include credentials like cookies
-}));
+// // Allow all origins (for development purposes)
+app.use(
+    cors({
+      origin: "*", // Allow requests from your frontend
+      methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
+      allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+      credentials: true, // Allow credentials (cookies, etc.)
+    })
+  );
+  
 app.use(express.json());
 
 app.get("/", (req, res) => {
